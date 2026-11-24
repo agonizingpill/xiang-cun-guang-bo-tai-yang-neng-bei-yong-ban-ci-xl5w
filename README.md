@@ -7,8 +7,8 @@
 模拟客户为岭声乡村广播合作社。广播时刻表、蓄电日志、用量周期预测、备用机优先级；节目版权离线时段只能接本地时钟。
 
 - 节目时段表 `airslots`，字段为 `title`（节目）、`hour`（起播小时）、`license`（节目源许可）、`offline`（离线时段）。模型约束位于 `backend/domain/airslots_model.py`，规则位于 `airslots_service.py`。
-- 蓄电班记与测量 `battery_logs`，字段为 `meter`（电表编号）、`hour`（两日内整点）、`load_wh`（用量 Wh）、`clear`（天空晴）、`verified`（抄表审核）。模型约束位于 `backend/domain/battery_logs_model.py`，规则位于 `battery_logs_service.py`。
-- 备用分钟核算 `reserves`，字段为 `airslot`（节目时段）、`plan_wh`（计划备用 Wh）、`fallback`（备用源优先级）、`mae`（时间验证MAE Wh）、`token`（计算号）。模型约束位于 `backend/domain/reserves_model.py`，规则位于 `reserves_service.py`。
+- 蓄电班记与测量 `battery_logs`，字段为 `meter`（电表编号）、`hour`（两日内整点）、`load_wh`（用量 Wh）、`clear`（天空晴）、`verified`（抄表审核）。同一电表整点唯一，审签通过后用于结算。模型约束位于 `backend/domain/battery_logs_model.py`，规则位于 `battery_logs_service.py`。
+- 备用分钟核算 `reserves`，字段为 `airslot`（节目时段）、`plan_wh`（计划备用 Wh）、`fallback`（备用源优先级）、`mae`（时间验证MAE Wh）、`token`（计算号），封存时另记 `meter`（原电表）、`hour`（目标小时），审签后结算 `actual_wh`（实耗 Wh）、`short_wh`（少备 Wh）与 `state`（封存状态）。模型约束位于 `backend/domain/reserves_model.py`，规则位于 `reserves_service.py`。
 - 班组备播卡 `switchcards`，字段为 `reserve`（备用评估）、`source`（实际时钟源）、`approved_wh`（锁定备用 Wh）、`state`（状态）。模型约束位于 `backend/domain/switchcards_model.py`，规则位于 `switchcards_service.py`。
 
 团队为模拟的6 人广播合作社值守组，负责两个电源档位的备播。
@@ -16,6 +16,14 @@
 值守员用节目表和电池抄数安排断电时段。周期负荷难从表格读出，漏掉一小时会扭曲拟合，离线版权段容易误选台外时钟。
 
 节目时刻表和已签电量日志进入估计，接班人拿到有限额与时钟源的备用卡。
+
+### 封存与结算
+
+复盘时要核对节目当时备的电是否够用。核算页可为次日节目封存预测：
+
+- 封存只用目标小时（起播小时 + 24）之前、同电表且已审签的读数。目标小时已有同表读数即拒收封存；封存与晚到抄表同时提交时，以先落账者为准。
+- 晚到的实测记录仍可登记，经审签后按备案记录的原电表、原小时结算。结算保留封存量 `plan_wh`，另显示实耗 `actual_wh` 与少备 `short_wh`；审签重试不重复结算。
+- 缺原电表或原小时的旧备案状态显示为“无法核对”。
 
 ### 一天的业务操作
 

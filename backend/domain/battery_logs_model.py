@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, CheckConstraint, Column, Float, ForeignKey, Integer, JSON, String, Table
+from sqlalchemy import Boolean, CheckConstraint, Column, Float, ForeignKey, Integer, JSON, String, Table, UniqueConstraint
 
 from core.db import metadata
 
@@ -12,4 +12,5 @@ battery_logs = Table('battery_logs', metadata,
     Column('verified', Boolean, nullable=False),
     CheckConstraint('hour between 0 and 47'),
     CheckConstraint('load_wh >= 0'),
+    UniqueConstraint('meter', 'hour', name='uq_battery_logs_meter_hour'),
 )

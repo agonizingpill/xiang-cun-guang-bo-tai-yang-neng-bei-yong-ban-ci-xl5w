@@ -13,7 +13,7 @@ router = APIRouter()
 @router.get('/reserves')
 def list_reserves(user=Depends(actor)):
     with transaction() as conn:
-        return scan(conn, reserves)
+        return [service.visible(row) for row in scan(conn, reserves)]
 
 
 @router.post('/reserves/forecast-wh')
